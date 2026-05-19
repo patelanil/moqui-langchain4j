@@ -50,6 +50,11 @@ dependencies {
     // LangChain4j
     implementation 'dev.langchain4j:langchain4j:1.8.0'           // Apache 2.0
     implementation 'dev.langchain4j:langchain4j-open-ai:1.8.0'   // Apache 2.0
+
+    // Test
+    testImplementation platform('org.spockframework:spock-bom:2.4-groovy-5.0') // Apache 2.0
+    testImplementation 'org.spockframework:spock-core:2.4-groovy-5.0'          // Apache 2.0
+    testImplementation 'org.junit.platform:junit-platform-launcher:6.0.1'      // EPL 2.0
 }
 
 // by default the Java plugin runs test on build, change to not do that (only run test if explicit task)
@@ -72,3 +77,27 @@ task copyDependencies { doLast {
 } }
 copyDependencies.dependsOn cleanLib
 jar.dependsOn copyDependencies
+
+task testAi(type: Test) {
+    useJUnitPlatform()
+    testClassesDirs = sourceSets.test.output.classesDirs
+    testLogging { events "passed", "skipped", "failed" }
+    testLogging.showStandardStreams = true; testLogging.showExceptions = true
+    maxParallelForks = 1
+
+    dependsOn cleanTestAi
+    dependsOn jar
+    include '**/*AiToolFactoryTests.class'
+
+    systemProperty 'moqui.runtime', '../..'
+    systemProperty 'moqui.conf', 'conf/MoquiDevConf.xml'
+    systemProperty 'moqui.init.static', 'true'
+
+    classpath = configurations.testRuntimeClasspath
+    classpath += files(sourceSets.test.output.classesDirs)
+    classpath += files(sourceSets.main.output.classesDirs); classpath += files(projectDir.absolutePath)
+    classpath += files(tasks.jar)
+    classpath = classpath.filter { it.exists() }
+
+    beforeTest { descriptor -> logger.lifecycle("Running test: ${descriptor}") }
+}
